@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Remote Sensing Crop Performance</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-draw@1.0.4/dist/leaflet.draw.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  
+  <style>
+    :root {
+      --primary-color: #4CAF50; /* A vibrant green for accents */
+      --secondary-color: #607D8B; /* A slate grey for secondary elements */
+      --background-light: #F8F9FA;
+      --background-dark: #EAECEF;
+      --text-color-dark: #343A40;
+      --text-color-light: #FFFFFF;
+      --border-color: #dee2e6;
+      --shadow-light: 0 4px 12px rgba(0, 0, 0, 0.08);
+      --border-radius-card: 12px;
+      --border-radius-input: 8px;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background: var(--background-light);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      color: var(--text-color-dark);
+      line-height: 1.6;
+    }
+
+    header {
+      background: var(--primary-color);
+      color: var(--text-color-light);
+      padding: 1.5rem 1rem;
+      text-align: center;
+      font-weight: 600;
+      font-size: 1.8rem;
+      box-shadow: var(--shadow-light);
+      z-index: 10; /* Ensure header is above map controls if any overlap */
+    }
+
+    #controls {
+      background: var(--background-dark);
+      padding: 1.2rem 1rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+      justify-content: center;
+      align-items: center;
+      border-bottom: 1px solid var(--border-color);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      z-index: 5;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    #controls label {
+      font-weight: 500;
+      color: var(--secondary-color);
+      font-size: 0.9rem;
+    }
+
+    #controls select,
+    #controls input[type="number"] {
+      padding: 0.7rem 1rem;
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-input);
+      font-size: 1rem;
+      color: var(--text-color-dark);
+      background-color: white;
+      transition: all 0.3s ease;
+      -webkit-appearance: none; /* Remove default styling for select */
+      -moz-appearance: none;
+      appearance: none;
+      background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23607D8B%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13%205.1L146.2%20202.7%2018.5%2074.5a17.6%2017.6%200%200%200-25.3%2023.3l130.8%20130.8c6.6%206.6%2017.2%206.6%2023.9%200l130.8-130.8a17.6%2017.6%200%200%200-13-30.2z%22%2F%3E%3C%2Fsvg%3E'); /* Custom arrow */
+      background-repeat: no-repeat;
+      background-position: right 0.7rem top 50%;
+      background-size: 0.7rem auto;
+    }
+    
+    #controls select:focus,
+    #controls input[type="number"]:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.2);
+      outline: none;
+    }
+
+    #controls button {
+      padding: 0.7rem 1.5rem;
+      border: none;
+      border-radius: var(--border-radius-input);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      box-shadow: var(--shadow-light);
+    }
+
+    #analyze-button {
+      background-color: var(--primary-color);
+      color: var(--text-color-light);
+    }
+    #analyze-button:hover {
+      background-color: #43A047; /* Slightly darker green */
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(0, 0, 0, 0.12);
+    }
+
+    #reset-button {
+      background-color: var(--secondary-color);
+      color: var(--text-color-light);
+    }
+    #reset-button:hover {
+      background-color: #546E7A; /* Slightly darker grey */
+      transform: translateY(-2px);
+      box-shadow: 0 6px 15px rgba(0, 0, 0, 0.12);
+    }
+
+    #map-container {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #map {
+      flex-grow: 1;
+      min-height: 50vh; /* Ensure map has a minimum height */
+      z-index: 1;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    /* Styles for the new custom Leaflet control */
+    .leaflet-control.map-layer-selector-control {
+        background-color: white;
+        padding: 8px 12px;
+        border-radius: var(--border-radius-input);
+        box-shadow: var(--shadow-light);
+        line-height: 1.5;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.9rem;
+        color: var(--text-color-dark);
+    }
+
+    .leaflet-control.map-layer-selector-control label {
+        font-weight: 500;
+        margin-right: 8px;
+        color: var(--secondary-color);
+    }
+
+    .leaflet-control.map-layer-selector-control select {
+        padding: 0.4rem 0.8rem;
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius-input);
+        font-size: 0.9rem;
+        color: var(--text-color-dark);
+        background-color: white;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23607D8B%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13%205.1L146.2%20202.7%2018.5%2074.5a17.6%2017.6%200%200%200-25.3%2023.3l130.8%20130.8c6.6%206.6%2017.2%206.6%2023.9%200l130.8-130.8a17.6%2017.6%200%200%200-13-30.2z%22%2F%3E%3C%2Fsvg%3E');
+        background-repeat: no-repeat;
+        background-position: right 0.5rem top 50%;
+        background-size: 0.6rem auto;
+    }
+
+    .leaflet-control.map-layer-selector-control select:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+        outline: none;
+    }
+
+
+    #output {
+      background: var(--background-light);
+      padding: 1.5rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      border-top: 1px solid var(--border-color);
+      overflow-y: auto;
+    }
+
+    .image-box, .stats-box {
+      background: white;
+      border-radius: var(--border-radius-card);
+      box-shadow: var(--shadow-light);
+      padding: 1.5rem;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: fit-content;
+    }
+
+    .image-box h3, .stats-box h3 {
+      color: var(--primary-color);
+      margin-top: 0;
+      margin-bottom: 1rem;
+      font-size: 1.3rem;
+      font-weight: 600;
+    }
+
+    .image-box img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      margin-top: 0.8rem;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+
+    .stats-box p {
+      margin: 0.5rem 0;
+      font-size: 1rem;
+      text-align: left; /* Align text within stats box */
+      width: 100%; /* Ensure text takes full width */
+    }
+    .stats-box p strong {
+      color: var(--secondary-color);
+      min-width: 120px; /* Align labels */
+      display: inline-block;
+    }
+
+    .stats-box hr {
+      border: none;
+      border-top: 1px dashed var(--border-color);
+      margin: 1.5rem 0;
+      width: 80%;
+    }
+
+    .stats-box h4 {
+      color: var(--primary-color);
+      margin-top: 1rem;
+      margin-bottom: 0.8rem;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    footer {
+      text-align: center;
+      background: var(--secondary-color);
+      color: var(--text-color-light);
+      padding: 1rem;
+      font-size: 0.9rem;
+    }
+
+    /* Loading Overlay */
+    #loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.8);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 2000;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease;
+    }
+
+    #loading-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .spinner {
+      border: 6px solid var(--background-dark);
+      border-top: 6px solid var(--primary-color);
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+    }
+
+    .loading-text {
+        margin-top: 1rem;
+        font-size: 1.2rem;
+        color: var(--secondary-color);
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      #controls {
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .control-group {
+        width: 90%;
+        align-items: center;
+      }
+      #controls button {
+        width: 90%;
+        justify-content: center;
+      }
+      #output {
+        grid-template-columns: 1fr; /* Stack items vertically on smaller screens */
+        padding: 1rem;
+      }
+      .image-box, .stats-box {
+        padding: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>Remote Sensing Crop Performance</header>
+
+  <div id="controls">
+    <div class="control-group">
+      <label for="layer-select"><i class="fas fa-layer-group"></i> Analysis Layer:</label>
+      <select id="layer-select">
+        {% for name, layer_id in wms_layers.items() %}
+          <option value="{{ layer_id }}" {% if layer_id == '3_NDVI' %}selected{% endif %}>{{ name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="control-group">
+      <label for="resolution-input"><i class="fas fa-ruler-combined"></i> Resolution (m/pixel):</label>
+      <input type="number" id="resolution-input" value="5" step="0.1" min="0.1" max="100"/>
+    </div>
+    <div class="control-group">
+      <label for="crop-select"><i class="fas fa-seedling"></i> Crop Type:</label>
+      <select id="crop-select">
+        <option value="wheat">Wheat</option>
+        <option value="corn">Corn</option>
+        <option value="barley">Barley</option>
+        <option value="rice">Rice</option>
+        <option value="oats">Oats</option>
+        <option value="rye">Rye</option>
+      </select>
+    </div>
+    <button id="analyze-button"><i class="fas fa-chart-area"></i> Analyze Area</button>
+    <button id="reset-button"><i class="fas fa-sync-alt"></i> Reset Map</button>
+  </div>
+
+  <div id="map-container">
+    <div id="map"></div>
+    <div id="output"></div>
+  </div>
+
+  <div id="loading-overlay">
+    <div class="spinner"></div>
+    <div class="loading-text">Analyzing...</div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+
+  <script>
+    const map = L.map("map").setView([36.8, 10.1], 9);
+    
+    // Base OpenStreetMap tile layer
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",  {
+      attribution: "© OpenStreetMap contributors"
+    }).addTo(map);
+
+    // Sentinel Hub WMS base URL (will be completed with instance ID in JS)
+    const SENTINEL_INSTANCE_ID = 'd7482dab-6310-4b9e-a829-b380b4ae9f7e'; // Your INSTANCE_ID
+    const sentinelHubWMSBaseUrl = `https://services.sentinel-hub.com/ogc/wms/${SENTINEL_INSTANCE_ID}`;
+
+    // Initial WMS layer for the map preview
+    let currentWMSLayer = L.tileLayer.wms(sentinelHubWMSBaseUrl, {
+      layers: '1_TRUE_COLOR', // Default to True Color
+      format: 'image/png',
+      transparent: true,
+      attribution: "Sentinel Hub"
+    }).addTo(map);
+
+    const drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
+
+    const drawControl = new L.Control.Draw({
+      draw: { rectangle: true, polygon: false, polyline: false, circle: false, marker: false },
+      edit: { featureGroup: drawnItems, remove: true }
+    });
+    map.addControl(drawControl);
+
+    let drawnRect = null;
+
+    // Handle drawing
+    map.on(L.Draw.Event.CREATED, function (e) {
+      if (drawnRect) drawnItems.removeLayer(drawnRect);
+      drawnRect = e.layer;
+      drawnItems.addLayer(drawnRect);
+    });
+
+    // --- Custom Leaflet Control for Map Layer Selection ---
+    const MapLayerControl = L.Control.extend({
+        onAdd: function(map) {
+            const container = L.DomUtil.create('div', 'leaflet-control map-layer-selector-control');
+            L.DomEvent.disableClickPropagation(container); // Prevent clicks from affecting map
+
+            const label = L.DomUtil.create('label', '', container);
+            label.setAttribute('for', 'map-layer-select-in-map');
+            label.innerHTML = '<i class="fas fa-map-marked-alt"></i> Map Layer:';
+
+            const select = L.DomUtil.create('select', '', container);
+            select.id = 'map-layer-select-in-map';
+
+            // Populate select options from server-provided wms_layers (via Flask)
+            const wmsLayers = {{ wms_layers | tojson }}; // Access wms_layers from Flask context
+            for (const name in wmsLayers) {
+                const option = document.createElement('option');
+                option.value = wmsLayers[name];
+                option.textContent = name;
+                if (wmsLayers[name] === '1_TRUE_COLOR') { // Set default selection
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            }
+
+            // Event listener for map layer selection
+            L.DomEvent.on(select, 'change', function() {
+                const selectedLayerId = this.value;
+                if (currentWMSLayer) {
+                    map.removeLayer(currentWMSLayer);
+                }
+                currentWMSLayer = L.tileLayer.wms(sentinelHubWMSBaseUrl, {
+                    layers: selectedLayerId,
+                    format: 'image/png',
+                    transparent: true,
+                    attribution: "Sentinel Hub"
+                }).addTo(map);
+            });
+
+            return container;
+        },
+
+        onRemove: function(map) {
+            // Nothing to do here
+        }
+    });
+
+    // Add the custom control to the map
+    new MapLayerControl({ position: 'topright' }).addTo(map);
+
+    // --- End Custom Leaflet Control ---
+
+
+    function showLoading(show) {
+        document.getElementById("loading-overlay").classList.toggle("active", show);
+    }
+
+    function clearOutput() {
+      document.getElementById("output").innerHTML = "";
+    }
+
+    function showResults(data) {
+      const container = document.getElementById("output");
+      container.innerHTML = "";
+
+      container.insertAdjacentHTML('beforeend', `
+        <div class="image-box">
+          <h3><i class="fas fa-image"></i> ${data.layer_used}</h3>
+          <img src="${data.true_color_url}?t=${Date.now()}" alt="Satellite Image" />
+        </div>`);
+
+      if (data.overlay_url && data.classification) {
+        container.insertAdjacentHTML('beforeend', `
+          <div class="image-box">
+            <h3><i class="fas fa-leaf"></i> Dense Vegetation Overlay</h3>
+            <img src="${data.overlay_url}?t=${Date.now()}" alt="Overlay" />
+          </div>
+          <div class="image-box" style="max-width:150px;">
+            <h3><i class="fas fa-palette"></i> Legend</h3>
+            <img src="${data.legend_url}?t=${Date.now()}" alt="Legend" />
+          </div>
+          <div class="image-box">
+            <h3><i class="fas fa-chart-bar"></i> NDVI Histogram</h3>
+            <img src="${data.histogram_url}?t=${Date.now()}" alt="Histogram" />
+          </div>
+          <div class="stats-box">
+            <h3><i class="fas fa-hand-holding-usd"></i> Crop Yield Estimate</h3>
+            <p><strong>Crop Type:</strong> ${data.crop}</p>
+            <p><strong>Total Area:</strong> ${data.total_area_hectares} ha</p>
+            <p><strong>Vegetated Area:</strong> ${data.vegetated_area_hectares} ha</p>
+            <p><strong>Avg Yield:</strong> ${data.avg_yield_tons_per_ha} tons/ha</p>
+            <p><strong>Estimated Yield:</strong> ${data.estimated_yield_tons.toFixed(2)} tons</p>
+            <hr/>
+            <h4><i class="fas fa-seedling"></i> Pixel Classification:</h4>
+            <p><strong>Water:</strong> ${data.classification.water_pixels} pixels</p>
+            <p><strong>Barren:</strong> ${data.classification.barren_pixels} pixels</p>
+            <p><strong>Sparse:</strong> ${data.classification.sparse_pixels} pixels</p>
+            <p><strong>Dense:</strong> ${data.classification.dense_pixels} pixels</p>
+            <p><em>(based on ~${data.resolution} m/pixel)</em></p>
+          </div>`);
+      } else {
+        container.insertAdjacentHTML('beforeend', `<p><em>No vegetation analysis performed for this layer.</em></p>`);
+      }
+
+      // Invalidate map size after output is rendered to ensure it displays correctly
+      setTimeout(() => map.invalidateSize(), 100);
+    }
+
+    document.getElementById("analyze-button").addEventListener("click", async () => {
+      if (!drawnRect) {
+        alert("Please draw an area on the map first using the rectangle tool.");
+        return;
+      }
+
+      showLoading(true); // Show loading spinner
+
+      const bounds = drawnRect.getBounds();
+      const bbox = [
+        bounds.getSouth(),
+        bounds.getWest(),
+        bounds.getNorth(),
+        bounds.getEast()
+      ];
+
+      const resolution = parseFloat(document.getElementById("resolution-input").value) || 10;
+      const layer = document.getElementById("layer-select").value; // This is the analysis layer
+      const crop = document.getElementById("crop-select").value;
+
+      try {
+        const res = await fetch("/process_area", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ bbox, resolution, layer, crop })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          showResults(data);
+        } else {
+          alert("Error: " + data.error);
+        }
+      } catch (err) {
+        alert("Server error: " + err.message);
+      } finally {
+        showLoading(false); // Hide loading spinner
+      }
+    });
+
+    document.getElementById("reset-button").addEventListener("click", () => {
+      if (drawnRect) drawnItems.removeLayer(drawnRect);
+      drawnRect = null;
+      clearOutput();
+      // Reset map view to Manouba, Tunisia
+      map.setView([36.8, 10.1], 9);
+      
+      // Reset map preview layer to default True Color
+      map.removeLayer(currentWMSLayer);
+      currentWMSLayer = L.tileLayer.wms(sentinelHubWMSBaseUrl, {
+        layers: '1_TRUE_COLOR',
+        format: 'image/png',
+        transparent: true,
+        attribution: "Sentinel Hub"
+      }).addTo(map);
+      // Find the select element for the map layer control and reset its value
+      const mapLayerSelectInMap = document.getElementById('map-layer-select-in-map');
+      if (mapLayerSelectInMap) {
+          mapLayerSelectInMap.value = '1_TRUE_COLOR';
+      }
+      
+      // Reset analysis layer to default NDVI
+      document.getElementById('layer-select').value = '3_NDVI';
+    });
+  </script>
+</body>
+</html>
