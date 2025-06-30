@@ -1,0 +1,72 @@
+# Requirements File for Remote Sensing Crop Performance Application
+
+# ===========================
+# CORE DEPENDENCIES
+# ===========================
+
+# Web Framework
+Flask==2.3.3
+Werkzeug==2.3.7
+
+# Numerical Computing and Array Operations
+numpy==1.24.3
+
+# HTTP Client Library for API Communication
+requests==2.31.0
+
+# ===========================
+# IMAGE PROCESSING LIBRARIES
+# ===========================
+
+# Python Imaging Library (PIL) - Image manipulation and processing
+Pillow==10.0.0
+
+# Computer Vision Library - Advanced image processing operations
+opencv-python==4.8.0.76
+
+# ===========================
+# DATA VISUALIZATION
+# ===========================
+
+# Matplotlib - Plotting and visualization (core package)
+matplotlib==3.7.2
+
+# Additional matplotlib dependencies
+fonttools==4.42.1
+kiwisolver==1.4.5
+packaging==23.1
+pyparsing==3.0.9
+python-dateutil==2.8.2
+six==1.16.0
+
+# ===========================
+# DEVELOPMENT DEPENDENCIES
+# ===========================
+
+# Testing Framework
+pytest==7.4.0
+pytest-flask==1.2.0
+
+# Configuration Management
+python-dotenv==1.0.0
+
+# Code Quality Tools
+flake8==6.0.0
+black==23.7.0
+
+# ===========================
+# ADDITIONAL DEPENDENCIES
+# ===========================
+
+# WSGI HTTP Server for production deployment
+gunicorn==21.2.0
+
+# Environment and system utilities
+click==8.1.7
+itsdangerous==2.1.2
+Jinja2==3.1.2
+MarkupSafe==2.1.3
+
+# Mathematical and scientific computing support
+scipy==1.11.2
+cycler==0.11.0
